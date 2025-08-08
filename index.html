@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>週報自動作成ツール</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+        .gradient-bg {
+            background-color: #1a202c;
+            background-image: radial-gradient(circle at 1px 1px, #374151 1px, transparent 0);
+            background-size: 20px 20px;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="gradient-bg text-gray-200">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-white">週報自動作成ツール</h1>
+            <p class="text-gray-400 mt-2">Slackの作業報告を貼り付けて、メール用の週報を作成します。</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- ===== 入力 & 設定エリア ===== -->
+            <div class="glass-card rounded-xl p-6 flex flex-col gap-6">
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                         <h2 class="text-xl font-semibold text-white border-l-4 border-cyan-400 pl-3">設定</h2>
+                         <span class="text-sm text-red-400"><span class="text-red-500">*</span> は必須項目</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                        <div class="sm:col-span-2">
+                            <label for="mailTo" class="block mb-1 font-medium text-gray-300">宛先<span class="text-red-500 ml-1">*</span></label>
+                            <input type="email" id="mailTo" placeholder="recipient@example.com" class="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none">
+                        </div>
+                         <div class="sm:col-span-2">
+                            <label for="userName" class="block mb-1 font-medium text-gray-300">氏名（件名用）<span class="text-red-500 ml-1">*</span></label>
+                            <input type="text" id="userName" placeholder="山田 太郎" class="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none">
+                        </div>
+                        <div>
+                            <label for="startTime" class="block mb-1 font-medium text-gray-300">定時（始業）<span class="text-red-500 ml-1">*</span></label>
+                            <input type="time" id="startTime" class="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none">
+                        </div>
+                        <div>
+                            <label for="endTime" class="block mb-1 font-medium text-gray-300">定時（終業）<span class="text-red-500 ml-1">*</span></label>
+                            <input type="time" id="endTime" class="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block mb-1 font-medium text-gray-300">1. お客様名<span class="text-red-500 ml-1">*</span></label>
+                            <div id="customerList" class="space-y-2"></div>
+                            <button id="addCustomerBtn" type="button" class="mt-2 text-sm text-cyan-400 hover:text-cyan-300 font-medium">+ お客様名を追加</button>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label for="consultation" class="block mb-1 font-medium text-gray-300">3. 弊社営業への相談事項<span class="text-red-500 ml-1">*</span></label>
+                            <textarea id="consultation" rows="2" class="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none"></textarea>
+                        </div>
+                         <div class="sm:col-span-2">
+                            <label for="teamStructure" class="block mb-1 font-medium text-gray-300">5. チームの体制<span class="text-red-500 ml-1">*</span></label>
+                            <textarea id="teamStructure" rows="2" class="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h2 class="text-xl font-semibold mb-3 text-white border-l-4 border-cyan-400 pl-3">Slack投稿<span class="text-red-500 ml-1">*</span></h2>
+                    <textarea id="slackInput" rows="8" class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none" placeholder="ここに1週間分のSlack投稿を貼り付け..."></textarea>
+                </div>
+
+                <button id="generateBtn" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 shadow-lg shadow-cyan-500/20">
+                    レポート作成
+                </button>
+            </div>
+
+            <!-- ===== 出力エリア ===== -->
+            <div class="glass-card rounded-xl p-6 flex flex-col">
+                <h2 class="text-xl font-semibold text-white border-l-4 border-teal-400 pl-3 mb-4">生成されたレポート</h2>
+                <div id="reportOutput" class="flex-grow overflow-auto space-y-4">
+                    <!-- To -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400">宛先</label>
+                        <div class="flex items-center gap-2 mt-1">
+                            <input readonly id="outputTo" class="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm cursor-pointer">
+                            <button id="copyToBtn" title="コピー" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-md transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                        </div>
+                    </div>
+                    <!-- Subject -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400">件名</label>
+                        <div class="flex items-center gap-2 mt-1">
+                            <input readonly id="outputSubject" class="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm cursor-pointer">
+                            <button id="copySubjectBtn" title="コピー" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-md transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                        </div>
+                    </div>
+                    <!-- Body -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400">本文</label>
+                        <div class="relative mt-1">
+                             <pre id="outputBody" class="w-full bg-gray-900 rounded-md p-4 text-sm whitespace-pre-wrap text-gray-300 h-64 overflow-y-auto border border-gray-700">ここに結果が表示されます。</pre>
+                             <button id="copyBodyBtn" title="コピー" class="absolute top-2 right-2 p-2 bg-gray-700 hover:bg-gray-600 rounded-md transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                        </div>
+                    </div>
+                </div>
+                <div id="messageBox" class="mt-4 text-center text-sm font-medium text-teal-400 opacity-0 transition-opacity duration-500"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const settingsKey = 'weeklyReportSettings';
+
+        // DOM要素
+        const ui = {
+            generateBtn: document.getElementById('generateBtn'),
+            slackInput: document.getElementById('slackInput'),
+            addCustomerBtn: document.getElementById('addCustomerBtn'),
+            customerList: document.getElementById('customerList'),
+            messageBox: document.getElementById('messageBox'),
+            // Outputs
+            outputTo: document.getElementById('outputTo'),
+            outputSubject: document.getElementById('outputSubject'),
+            outputBody: document.getElementById('outputBody'),
+            // Copy Buttons
+            copyToBtn: document.getElementById('copyToBtn'),
+            copySubjectBtn: document.getElementById('copySubjectBtn'),
+            copyBodyBtn: document.getElementById('copyBodyBtn'),
+        };
+
+        function addCustomerInput(defaultValue = "") {
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-2';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'customer-name-input w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none';
+            input.value = defaultValue;
+            input.placeholder = "お客様名を入力";
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.textContent = 'ー';
+            removeBtn.className = 'bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-md transition duration-200 flex-shrink-0';
+            removeBtn.onclick = () => {
+                if (document.querySelectorAll('.customer-name-input').length > 1) div.remove();
+            };
+            div.appendChild(input);
+            div.appendChild(removeBtn);
+            ui.customerList.appendChild(div);
+        }
+
+        function saveSettings() {
+            const customerNames = Array.from(document.querySelectorAll('.customer-name-input')).map(i => i.value.trim()).filter(Boolean);
+            const settings = {
+                mailTo: document.getElementById('mailTo').value,
+                userName: document.getElementById('userName').value,
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                customerNames: customerNames,
+                consultation: document.getElementById('consultation').value,
+                teamStructure: document.getElementById('teamStructure').value,
+            };
+            localStorage.setItem(settingsKey, JSON.stringify(settings));
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem(settingsKey);
+            const settings = saved ? JSON.parse(saved) : {};
+            document.getElementById('mailTo').value = settings.mailTo || '';
+            document.getElementById('userName').value = settings.userName || '';
+            document.getElementById('startTime').value = settings.startTime || '09:00';
+            document.getElementById('endTime').value = settings.endTime || '18:00';
+            document.getElementById('consultation').value = settings.consultation || '特になし';
+            document.getElementById('teamStructure').value = settings.teamStructure || '変更なし';
+            ui.customerList.innerHTML = '';
+            if (settings.customerNames && settings.customerNames.length > 0) {
+                settings.customerNames.forEach(name => addCustomerInput(name));
+            } else {
+                addCustomerInput("サンプル株式会社 様");
+            }
+        }
+
+        function showMessage(msg) {
+            ui.messageBox.textContent = msg;
+            ui.messageBox.style.opacity = '1';
+            setTimeout(() => { ui.messageBox.style.opacity = '0'; }, 2000);
+        }
+
+        function copyToClipboard(element, name) {
+            const text = element.tagName === 'PRE' ? element.textContent : element.value;
+            if (!text || text === 'ここに結果が表示されます。') return;
+            navigator.clipboard.writeText(text).then(() => {
+                showMessage(`${name}をコピーしました！`);
+            }).catch(err => console.error(`${name}のコピーに失敗:`, err));
+        }
+        
+        function generateReport(inputText, settings) {
+            const lines = inputText.trim().split('\n');
+            let dailyRecords = [];
+            let currentDay = null;
+            
+            const dailySummaryRegex = /^(\d{2}\.\d{2})（(.)）(\d+\.?\d*)h\+休憩(\d+\.?\d*)h/;
+            
+            lines.forEach(line => {
+                const dailyMatch = line.match(dailySummaryRegex);
+                if (dailyMatch) {
+                    if (currentDay) dailyRecords.push(currentDay);
+                    currentDay = {
+                        date: dailyMatch[1].replace('.', '/'),
+                        dayOfWeek: dailyMatch[2],
+                        workHours: parseFloat(dailyMatch[3]),
+                        breakHours: parseFloat(dailyMatch[4]),
+                        tasks: []
+                    };
+                } else if (currentDay && line.trim()) {
+                    currentDay.tasks.push(line.trim());
+                }
+            });
+            if (currentDay) dailyRecords.push(currentDay);
+
+            const timeToMinutes = t => t.split(':').map(Number).reduce((h, m) => h * 60 + m);
+            const minutesToTime = m => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(Math.round(m%60)).padStart(2,'0')}`;
+            const calculateEndTime = (start, hours) => minutesToTime(timeToMinutes(start) + hours * 60);
+
+            const standardDailyWorkHours = (timeToMinutes(settings.endTime) - timeToMinutes(settings.startTime) - 60) / 60;
+            let totalWeeklyHours = 0;
+            let workTimeDetails = [];
+            dailyRecords.forEach(day => {
+                totalWeeklyHours += day.workHours;
+                const endTime = calculateEndTime(settings.startTime, day.workHours + day.breakHours);
+                workTimeDetails.push(`${day.date}（${day.dayOfWeek}） ${settings.startTime}〜${endTime}`);
+            });
+
+            const totalWeeklyStandardHours = standardDailyWorkHours * dailyRecords.length;
+            const totalOvertimeHours = Math.max(0, totalWeeklyHours - totalWeeklyStandardHours);
+
+            const workDetailsSection = dailyRecords
+                .map(day => {
+                    if (day.tasks.length > 0) {
+                        const tasksList = day.tasks.map(task => `・${task}`).join('\n');
+                        return `▼${day.date}（${day.dayOfWeek}）\n${tasksList}`;
+                    }
+                    return null;
+                })
+                .filter(Boolean)
+                .join('\n\n');
+
+            const bodyParts = [
+                `1.お客様名\n${settings.customerNames}`,
+                `2.作業実績時間\n【定時 ${settings.startTime}-${settings.endTime}】\n${workTimeDetails.join('\n')}`,
+                `積算稼働時間\n${totalWeeklyHours.toFixed(1)}h／今週の残業時間${totalOvertimeHours.toFixed(2)}h`,
+                `3.弊社営業への相談事項\n${settings.consultation}`,
+                `4.今週行った業務内容\n${workDetailsSection}`,
+                `5.チームの体制\n${settings.teamStructure}`
+            ];
+            
+            return bodyParts.join('\n\n');
+        }
+
+        // --- イベントリスナー設定 ---
+        document.addEventListener('DOMContentLoaded', loadSettings);
+        ui.addCustomerBtn.addEventListener('click', () => addCustomerInput());
+        ui.copyToBtn.addEventListener('click', () => copyToClipboard(ui.outputTo, '宛先'));
+        ui.copySubjectBtn.addEventListener('click', () => copyToClipboard(ui.outputSubject, '件名'));
+        ui.copyBodyBtn.addEventListener('click', () => copyToClipboard(ui.outputBody, '本文'));
+        
+        ui.generateBtn.addEventListener('click', () => {
+            const errors = [];
+            const customerNames = Array.from(document.querySelectorAll('.customer-name-input')).map(i => i.value.trim()).filter(Boolean);
+            
+            const settings = {
+                mailTo: document.getElementById('mailTo').value.trim(),
+                userName: document.getElementById('userName').value.trim(),
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                customerNames: customerNames.join('\n'),
+                consultation: document.getElementById('consultation').value.trim(),
+                teamStructure: document.getElementById('teamStructure').value.trim(),
+            };
+            const inputText = ui.slackInput.value.trim();
+
+            if (!settings.mailTo) errors.push("・宛先を入力してください。");
+            if (!settings.userName) errors.push("・氏名（件名用）を入力してください。");
+            if (!settings.startTime) errors.push("・定時（始業）を入力してください。");
+            if (!settings.endTime) errors.push("・定時（終業）を入力してください。");
+            if (customerNames.length === 0) errors.push("・お客様名を1件以上入力してください。");
+            if (!settings.consultation) errors.push("・弊社営業への相談事項を入力してください。");
+            if (!settings.teamStructure) errors.push("・チームの体制を入力してください。");
+            if (!inputText) errors.push("・Slack投稿の内容を貼り付けてください。");
+
+            if (errors.length > 0) {
+                ui.outputBody.textContent = "以下の項目を入力してください：\n\n" + errors.join('\n');
+                ui.outputBody.classList.add('text-red-400');
+                ui.outputTo.value = '';
+                ui.outputSubject.value = '';
+                return;
+            }
+            ui.outputBody.classList.remove('text-red-400');
+
+            try {
+                const reportBody = generateReport(inputText, settings);
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                const formattedDate = `${yyyy}/${mm}/${dd}`;
+
+                ui.outputTo.value = settings.mailTo;
+                ui.outputSubject.value = `【${settings.userName}週報】${formattedDate}`;
+                ui.outputBody.textContent = reportBody;
+                
+                saveSettings();
+            } catch (error) {
+                console.error("レポート生成中にエラーが発生しました:", error);
+                ui.outputBody.textContent = `エラーが発生しました。\n入力データや設定を確認してください。\n\n詳細: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
