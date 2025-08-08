@@ -260,7 +260,8 @@
             const bodyParts = [
                 `1.お客様名\n${settings.customerNames}`,
                 `2.作業実績時間\n【定時 ${settings.startTime}-${settings.endTime}】\n${workTimeDetails.join('\n')}`,
-                `積算稼働時間\n${totalWeeklyHours.toFixed(2)}h／今週の残業時間${totalOvertimeHours.toFixed(2)}h`,
+                // ★★★ 修正点：改行を削除し、積算稼働時間を小数点1桁に変更 ★★★
+                `積算稼働時間${totalWeeklyHours.toFixed(1)}h／今週の残業時間${totalOvertimeHours.toFixed(2)}h`,
                 `3.弊社営業への相談事項\n${settings.consultation}`,
                 `4.今週行った業務内容\n${workDetailsSection}`,
                 `5.チームの体制\n${settings.teamStructure}`
