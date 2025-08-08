@@ -71,7 +71,10 @@
                 </div>
 
                 <div>
-                    <h2 class="text-xl font-semibold mb-3 text-white border-l-4 border-cyan-400 pl-3">Slack投稿<span class="text-red-500 ml-1">*</span></h2>
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-xl font-semibold text-white border-l-4 border-cyan-400 pl-3">Slack投稿<span class="text-red-500 ml-1">*</span></h2>
+                        <button id="clearSlackInputBtn" type="button" class="text-sm bg-gray-600 hover:bg-gray-700 text-white font-medium py-1 px-3 rounded-md transition">投稿をクリア</button>
+                    </div>
                     <textarea id="slackInput" rows="8" class="w-full bg-gray-800 border border-gray-600 rounded-md p-3 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none" placeholder="ここに1週間分のSlack投稿を貼り付け..."></textarea>
                 </div>
 
@@ -120,6 +123,7 @@
         // DOM要素
         const ui = {
             generateBtn: document.getElementById('generateBtn'),
+            clearSlackInputBtn: document.getElementById('clearSlackInputBtn'),
             slackInput: document.getElementById('slackInput'),
             addCustomerBtn: document.getElementById('addCustomerBtn'),
             customerList: document.getElementById('customerList'),
@@ -164,6 +168,7 @@
                 customerNames: customerNames,
                 consultation: document.getElementById('consultation').value,
                 teamStructure: document.getElementById('teamStructure').value,
+                slackInput: ui.slackInput.value
             };
             localStorage.setItem(settingsKey, JSON.stringify(settings));
         }
@@ -177,6 +182,8 @@
             document.getElementById('endTime').value = settings.endTime || '18:00';
             document.getElementById('consultation').value = settings.consultation || '特になし';
             document.getElementById('teamStructure').value = settings.teamStructure || '変更なし';
+            ui.slackInput.value = settings.slackInput || '';
+            
             ui.customerList.innerHTML = '';
             if (settings.customerNames && settings.customerNames.length > 0) {
                 settings.customerNames.forEach(name => addCustomerInput(name));
@@ -253,7 +260,7 @@
             const bodyParts = [
                 `1.お客様名\n${settings.customerNames}`,
                 `2.作業実績時間\n【定時 ${settings.startTime}-${settings.endTime}】\n${workTimeDetails.join('\n')}`,
-                `積算稼働時間\n${totalWeeklyHours.toFixed(1)}h／今週の残業時間${totalOvertimeHours.toFixed(2)}h`,
+                `積算稼働時間\n${totalWeeklyHours.toFixed(2)}h／今週の残業時間${totalOvertimeHours.toFixed(2)}h`,
                 `3.弊社営業への相談事項\n${settings.consultation}`,
                 `4.今週行った業務内容\n${workDetailsSection}`,
                 `5.チームの体制\n${settings.teamStructure}`
@@ -269,6 +276,22 @@
         ui.copySubjectBtn.addEventListener('click', () => copyToClipboard(ui.outputSubject, '件名'));
         ui.copyBodyBtn.addEventListener('click', () => copyToClipboard(ui.outputBody, '本文'));
         
+        ui.clearSlackInputBtn.addEventListener('click', () => {
+            ui.slackInput.value = '';
+            ui.outputTo.value = '';
+            ui.outputSubject.value = '';
+            ui.outputBody.textContent = 'ここに結果が表示されます。';
+            ui.outputBody.classList.remove('text-red-400');
+            
+            const saved = localStorage.getItem(settingsKey);
+            if (saved) {
+                const settings = JSON.parse(saved);
+                settings.slackInput = '';
+                localStorage.setItem(settingsKey, JSON.stringify(settings));
+            }
+            showMessage("投稿内容をクリアしました。");
+        });
+
         ui.generateBtn.addEventListener('click', () => {
             const errors = [];
             const customerNames = Array.from(document.querySelectorAll('.customer-name-input')).map(i => i.value.trim()).filter(Boolean);
