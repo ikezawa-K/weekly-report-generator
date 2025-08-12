@@ -211,14 +211,22 @@
             let dailyRecords = [];
             let currentDay = null;
             
-            const dailySummaryRegex = /^(\d{2}\.\d{2})（(.)）(\d+\.?\d*)h\+休憩(\d+\.?\d*)h/;
+            // ★★★ 修正点：正規表現をより柔軟なものに変更 ★★★
+            const dailySummaryRegex = /^(\d{1,2}\.\d{1,2})[（\(](.)[）\)]\s*(\d+\.?\d*)h\+休憩(\d+\.?\d*)h/;
             
             lines.forEach(line => {
                 const dailyMatch = line.match(dailySummaryRegex);
                 if (dailyMatch) {
                     if (currentDay) dailyRecords.push(currentDay);
+                    
+                    // 日付を MM/DD 形式に正規化
+                    const dateParts = dailyMatch[1].split('.');
+                    const month = dateParts[0].padStart(2, '0');
+                    const day = dateParts[1].padStart(2, '0');
+                    const normalizedDate = `${month}/${day}`;
+
                     currentDay = {
-                        date: dailyMatch[1].replace('.', '/'),
+                        date: normalizedDate,
                         dayOfWeek: dailyMatch[2],
                         workHours: parseFloat(dailyMatch[3]),
                         breakHours: parseFloat(dailyMatch[4]),
@@ -230,7 +238,6 @@
             });
             if (currentDay) dailyRecords.push(currentDay);
 
-            // ★★★ 修正点：日付順にソートする処理を追加 ★★★
             dailyRecords.sort((a, b) => a.date.localeCompare(b.date));
 
             const timeToMinutes = t => t.split(':').map(Number).reduce((h, m) => h * 60 + m);
