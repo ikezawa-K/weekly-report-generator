@@ -210,8 +210,9 @@
             const lines = inputText.trim().split('\n');
             let dailyRecords = [];
             let currentDay = null;
+            const processedDates = new Set();
+            const processedDaysOfWeek = new Set(); // ★★★ 曜日重複チェック用セット ★★★
             
-            // ★★★ 修正点：正規表現をより柔軟なものに変更 ★★★
             const dailySummaryRegex = /^(\d{1,2}\.\d{1,2})[（\(](.)[）\)]\s*(\d+\.?\d*)h\+休憩(\d+\.?\d*)h/;
             
             lines.forEach(line => {
@@ -219,15 +220,26 @@
                 if (dailyMatch) {
                     if (currentDay) dailyRecords.push(currentDay);
                     
-                    // 日付を MM/DD 形式に正規化
                     const dateParts = dailyMatch[1].split('.');
                     const month = dateParts[0].padStart(2, '0');
                     const day = dateParts[1].padStart(2, '0');
                     const normalizedDate = `${month}/${day}`;
+                    const dayOfWeek = dailyMatch[2];
+
+                    if (processedDates.has(normalizedDate)) {
+                        throw new Error(`日付が重複しています: ${normalizedDate}`);
+                    }
+                    processedDates.add(normalizedDate);
+
+                    // ★★★ 曜日重複チェック ★★★
+                    if (processedDaysOfWeek.has(dayOfWeek)) {
+                        throw new Error(`曜日が重複しています: ${dayOfWeek}`);
+                    }
+                    processedDaysOfWeek.add(dayOfWeek);
 
                     currentDay = {
                         date: normalizedDate,
-                        dayOfWeek: dailyMatch[2],
+                        dayOfWeek: dayOfWeek,
                         workHours: parseFloat(dailyMatch[3]),
                         breakHours: parseFloat(dailyMatch[4]),
                         tasks: []
@@ -358,6 +370,7 @@
             } catch (error) {
                 console.error("レポート生成中にエラーが発生しました:", error);
                 ui.outputBody.textContent = `エラーが発生しました。\n入力データや設定を確認してください。\n\n詳細: ${error.message}`;
+                ui.outputBody.classList.add('text-red-400'); // エラーメッセージを赤くする
             }
         });
     </script>
