@@ -211,10 +211,25 @@
             let dailyRecords = [];
             let currentDay = null;
             const processedDates = new Set();
-            const processedDaysOfWeek = new Set(); // ★★★ 曜日重複チェック用セット ★★★
+            const processedDaysOfWeek = new Set();
             
-            const dailySummaryRegex = /^(\d{1,2}\.\d{1,2})[（\(](.)[）\)]\s*(\d+\.?\d*)h\+休憩(\d+\.?\d*)h/;
+            // ★★★ 修正点：休憩部分をオプション（任意）にする正規表現に変更 ★★★
+            const dailySummaryRegex = /^(\d{1,2}\.\d{1,2})[（\(](.)[）\)]\s*(\d+\.?\d*)h(?:\+休憩(\d+\.?\d*)h)?/;
             
+            const invalidFormatLines = [];
+            lines.forEach(line => {
+                if (line.trim() === '') return;
+                // 日付のように見えるが正規表現にマッチしない行は不正とみなす
+                if (/^\d{1,2}\.\d{1,2}/.test(line) && !dailySummaryRegex.test(line)) {
+                    invalidFormatLines.push(line);
+                }
+            });
+
+            if (invalidFormatLines.length > 0) {
+                 throw new Error(`以下の日付行の形式が正しくありません。曜日や時間の形式を確認してください:\n\n${invalidFormatLines.join('\n')}`);
+            }
+
+
             lines.forEach(line => {
                 const dailyMatch = line.match(dailySummaryRegex);
                 if (dailyMatch) {
@@ -231,7 +246,6 @@
                     }
                     processedDates.add(normalizedDate);
 
-                    // ★★★ 曜日重複チェック ★★★
                     if (processedDaysOfWeek.has(dayOfWeek)) {
                         throw new Error(`曜日が重複しています: ${dayOfWeek}`);
                     }
@@ -241,7 +255,8 @@
                         date: normalizedDate,
                         dayOfWeek: dayOfWeek,
                         workHours: parseFloat(dailyMatch[3]),
-                        breakHours: parseFloat(dailyMatch[4]),
+                        // ★★★ 修正点：休憩時間がない場合は0をセット ★★★
+                        breakHours: dailyMatch[4] ? parseFloat(dailyMatch[4]) : 0,
                         tasks: []
                     };
                 } else if (currentDay && line.trim()) {
@@ -249,6 +264,12 @@
                 }
             });
             if (currentDay) dailyRecords.push(currentDay);
+
+            const daysWithNoTasks = dailyRecords.filter(day => day.tasks.length === 0);
+            if (daysWithNoTasks.length > 0) {
+                const dates = daysWithNoTasks.map(day => `${day.date}（${day.dayOfWeek}）`).join(', ');
+                throw new Error(`以下の日付には作業内容がありません。確認してください:\n\n${dates}`);
+            }
 
             dailyRecords.sort((a, b) => a.date.localeCompare(b.date));
 
@@ -369,7 +390,7 @@
                 saveSettings();
             } catch (error) {
                 console.error("レポート生成中にエラーが発生しました:", error);
-                ui.outputBody.textContent = `エラーが発生しました。\n入力データや設定を確認してください。\n\n詳細: ${error.message}`;
+                ui.outputBody.textContent = `エラーが発生しました。\n入力データを確認してください。\n\n詳細: ${error.message}`;
                 ui.outputBody.classList.add('text-red-400'); // エラーメッセージを赤くする
             }
         });
